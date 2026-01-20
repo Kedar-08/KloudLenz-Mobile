@@ -8,8 +8,8 @@ import { getDeviceType } from "./fcmTokenManager";
  * All API calls to the backend server using axios
  *
  * API Endpoints:
- * - POST /account/login - User authentication
- * - GET /approvals - Get all approvals
+ * - POST /admin/login - User authentication
+ * - GET /approval/allDetails - Get all approvals
  * - GET /approvals/:id - Get approval by ID
  * - POST /approvals/:id/approve - Approve a request
  * - POST /approvals/:id/reject - Reject a request
@@ -60,13 +60,44 @@ export const backendApi = {
    * Get all approvals
    * @returns Array of approval objects
    *
-   * API: GET /approvals
+   * API: GET /approval/allDetails
    * Query params: ?status=pending (optional)
-   * Response: { approvals: Approval[] }
+   * Response: { message, statusCode, data: [...], timestamp }
    */
   getApprovals: async (): Promise<Approval[]> => {
-    const response = await apiClient.get("/approvals");
-    return response.data.approvals || response.data;
+    const response = await apiClient.get("/approval/allDetails");
+
+    console.log("📥 Get Approvals Response:");
+    console.log("   Status:", response.status);
+    console.log("   Data:", JSON.stringify(response.data, null, 2));
+
+    // Backend returns data in response.data.data array
+    const approvalsData = response.data.data || [];
+
+    // Transform backend response to Approval type
+    return approvalsData.map((item: any) => ({
+      id: String(item.id),
+      userId: String(item.id), // Using id as userId for now
+      username: "System", // Default username
+      description: item.reason || "No description",
+      category: item.type || "general",
+      suspensionPolicy: item.type || "none",
+      executionDate: new Date().toISOString(),
+      status:
+        item.status === "Success"
+          ? ("approved" as const)
+          : item.status === "Pending"
+            ? ("pending" as const)
+            : item.status === "Rejected"
+              ? ("rejected" as const)
+              : ("pending" as const),
+      timestamp: new Date().toISOString(),
+      rejectionReason: item.reason || undefined,
+      extraFields: {
+        subscriptionNumber: item.subscriptionNumber || "",
+        rawJson: item.rawJson || "",
+      },
+    }));
   },
 
   /**
