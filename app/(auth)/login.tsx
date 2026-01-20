@@ -54,7 +54,15 @@ export default function LoginScreen() {
             onSubmit={async (values: any, { setSubmitting }: any) => {
               setIsLoading(true);
               try {
+                console.log("🔑 Attempting login...");
+                console.log("   Email:", values.email);
+                console.log(
+                  "   Backend:",
+                  "https://calculably-noncretaceous-georgene.ngrok-free.dev/api/v1/account/login",
+                );
+
                 await mockApi.login(values.email, values.password);
+                console.log("✅ Login successful");
 
                 // Use email as user ID for FCM token registration
                 setUserId(values.email);

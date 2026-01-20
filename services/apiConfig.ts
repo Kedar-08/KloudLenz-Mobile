@@ -43,6 +43,11 @@ apiClient.interceptors.response.use(
       // Server responded with error status
       const { status, data } = error.response;
 
+      console.error("❌ API Error Response:");
+      console.error("   Status:", status);
+      console.error("   Data:", JSON.stringify(data, null, 2));
+      console.error("   URL:", error.config?.url);
+
       if (status === 401) {
         // Unauthorized - redirect to login
         console.log("Unauthorized access - redirecting to login");
@@ -55,12 +60,18 @@ apiClient.interceptors.response.use(
         console.log("Server error occurred");
       }
 
-      return Promise.reject(data?.message || "An error occurred");
+      return Promise.reject(
+        data?.message || data?.error || `Server error: ${status}`,
+      );
     } else if (error.request) {
       // Request made but no response
+      console.error("❌ Network Error:");
+      console.error("   Request:", error.request);
+      console.error("   Message:", error.message);
       return Promise.reject("Network error. Please check your connection.");
     } else {
       // Something else happened
+      console.error("❌ Error:", error.message);
       return Promise.reject(error.message || "An error occurred");
     }
   },

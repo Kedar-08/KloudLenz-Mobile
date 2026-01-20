@@ -1,6 +1,6 @@
 import { Approval } from "../types/approval";
 import { User } from "../types/user";
-import { apiClient } from "./apiConfig";
+import { API_CONFIG, apiClient } from "./apiConfig";
 import { getDeviceType } from "./fcmTokenManager";
 
 /**
@@ -8,7 +8,7 @@ import { getDeviceType } from "./fcmTokenManager";
  * All API calls to the backend server using axios
  *
  * API Endpoints:
- * - POST /auth/login - User authentication
+ * - POST /account/login - User authentication
  * - GET /approvals - Get all approvals
  * - GET /approvals/:id - Get approval by ID
  * - POST /approvals/:id/approve - Approve a request
@@ -22,20 +22,38 @@ export const backendApi = {
    * @param password - User's password
    * @returns User object with auth token
    *
-   * API: POST /auth/login
+   * API: POST /admin/login (full: BASE_URL + /admin/login)
    * Request: { username: string, password: string }
-   * Response: { user: User, token: string }
+   * Response: { message: string, statusCode: 200, data: { email, firstName, id, lastName }, timestamp }
    */
   login: async (username: string, password: string): Promise<User> => {
-    const response = await apiClient.post("/auth/login", {
-      username,
+    const requestBody = {
+      email: username, // Backend expects 'email', not 'username'
       password,
-    });
+    };
+
+    console.log("📤 Login Request:");
+    console.log("   URL:", `${API_CONFIG.BASE_URL}/admin/login`);
+    console.log("   Body:", JSON.stringify(requestBody, null, 2));
+
+    const response = await apiClient.post("/admin/login", requestBody);
+
+    // Backend response structure: response.data.data contains user info
+    const userData = response.data.data;
+
+    // Transform backend response to User type
+    const user: User = {
+      id: String(userData.id), // Convert number to string
+      username: userData.email.split("@")[0], // Extract username from email
+      email: userData.email,
+      name: `${userData.firstName} ${userData.lastName}`,
+      role: "approver", // Default role
+    };
 
     // Store token if needed
     // await SecureStore.setItemAsync('authToken', response.data.token);
 
-    return response.data.user;
+    return user;
   },
 
   /**
