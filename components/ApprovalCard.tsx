@@ -28,7 +28,7 @@ export const ApprovalCard: React.FC<ApprovalCardProps> = ({
     <Pressable onPress={onPress} style={styles.card}>
       <View style={styles.topRow}>
         <Text style={styles.username} numberOfLines={1}>
-          {approval.username}
+          {approval.subscriptionNumber || approval.username}
         </Text>
         <View
           style={[
@@ -40,7 +40,7 @@ export const ApprovalCard: React.FC<ApprovalCardProps> = ({
         </View>
       </View>
 
-      <Text style={styles.userId}>{approval.userId}</Text>
+
 
       <View style={styles.fieldRow}>
         <Text style={styles.fieldLabel}>Category:</Text>

@@ -96,7 +96,8 @@ export const generateFCMToken = async (): Promise<FCMTokenResult> => {
       };
     }
 
-    // Step 2: Check if running on physical device
+    // Step 2: Check if running on physical device (Skipping check to allow Emulator testing if Play Services are present)
+    /*
     if (!isPhysicalDevice()) {
       return {
         success: false,
@@ -104,6 +105,7 @@ export const generateFCMToken = async (): Promise<FCMTokenResult> => {
           "FCM token can only be generated on a physical Android device (not emulator)",
       };
     }
+    */
 
     // Step 3: Check if running in Expo Go
     if (isExpoGo()) {

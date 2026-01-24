@@ -45,14 +45,14 @@ export default function ApprovalDetailsScreen() {
 
   const handleApprove = async () => {
     if (!approval) return;
-    const prevStatus = approval.status;
+    setIsProcessing(true);
     try {
-      // optimistic update: notify list immediately
+      await mockApi.approveRequest(approval.id);
+
+      // Update local state and list after success
       setApproval((p) => (p ? { ...p, status: "approved" } : p));
       eventBus.emit("approvalUpdated", { id: approval.id, status: "approved" });
 
-      setIsProcessing(true);
-      await mockApi.approveRequest(approval.id);
       Alert.alert("Success", "Approval has been approved", [
         {
           text: "OK",
@@ -60,9 +60,6 @@ export default function ApprovalDetailsScreen() {
         },
       ]);
     } catch (err) {
-      // rollback optimistic update
-      setApproval((p) => (p ? { ...p, status: prevStatus } : p));
-      eventBus.emit("approvalUpdated", { id: approval.id, status: prevStatus });
       const message = err instanceof Error ? err.message : "Failed to approve";
       Alert.alert("Error", message);
     } finally {
@@ -72,10 +69,11 @@ export default function ApprovalDetailsScreen() {
 
   const handleRejectSubmit = async (reason: string) => {
     if (!approval) return;
-    const prevStatus = approval.status;
-    const prevReason = approval.rejectionReason;
+    setIsProcessing(true);
     try {
-      // optimistic update
+      await mockApi.rejectRequest(approval.id, reason);
+
+      // Update local state after success
       setApproval((p) =>
         p ? { ...p, status: "rejected", rejectionReason: reason } : p,
       );
@@ -85,8 +83,6 @@ export default function ApprovalDetailsScreen() {
         rejectionReason: reason,
       });
 
-      setIsProcessing(true);
-      await mockApi.rejectRequest(approval.id, reason);
       setRejectModalVisible(false);
       Alert.alert("Success", "Approval has been rejected", [
         {
@@ -95,15 +91,6 @@ export default function ApprovalDetailsScreen() {
         },
       ]);
     } catch (err) {
-      // rollback optimistic update
-      setApproval((p) =>
-        p ? { ...p, status: prevStatus, rejectionReason: prevReason } : p,
-      );
-      eventBus.emit("approvalUpdated", {
-        id: approval.id,
-        status: prevStatus,
-        rejectionReason: prevReason,
-      });
       const message = err instanceof Error ? err.message : "Failed to reject";
       Alert.alert("Error", message);
     } finally {
@@ -142,7 +129,7 @@ export default function ApprovalDetailsScreen() {
           <Text style={styles.sectionTitle}>User Information</Text>
           <View style={styles.infoContainer}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Username:</Text>
+              <Text style={styles.infoLabel}>Account#:</Text>
               <Text style={styles.infoValue}>{approval.username}</Text>
             </View>
             <View style={styles.infoRow}>
@@ -177,10 +164,12 @@ export default function ApprovalDetailsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Fields</Text>
           <View style={styles.infoContainer}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Suspension policy:</Text>
-              <Text style={styles.infoValue}>{approval.suspensionPolicy}</Text>
-            </View>
+            {approval.category === "Suspend" && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Suspension policy:</Text>
+                <Text style={styles.infoValue}>{approval.suspensionPolicy}</Text>
+              </View>
+            )}
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Execution date:</Text>
               <Text style={styles.infoValue}>
@@ -207,7 +196,11 @@ export default function ApprovalDetailsScreen() {
                   .map(([key, value]) => (
                     <View key={key} style={styles.infoRow}>
                       <Text style={styles.infoLabel}>{key}:</Text>
-                      <Text style={styles.infoValue}>{value}</Text>
+                      <Text style={styles.infoValue}>
+                        {typeof value === "object"
+                          ? JSON.stringify(value, null, 2)
+                          : String(value)}
+                      </Text>
                     </View>
                   ));
               })()}
@@ -215,28 +208,54 @@ export default function ApprovalDetailsScreen() {
         </View>
       </ScrollView>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.button, styles.rejectButton]}
-          onPress={() => setRejectModalVisible(true)}
-          disabled={isProcessing}
-        >
-          <Text style={styles.rejectButtonText}>Reject</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+      {(() => { console.log("Current Approval Status:", approval.status); return null; })()}
+      {approval.status.toLowerCase() === "pending" ? (
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.button, styles.rejectButton]}
+            onPress={() => setRejectModalVisible(true)}
+            disabled={isProcessing}
+          >
+            <Text style={styles.rejectButtonText}>Reject</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.approveButton,
+              isProcessing && styles.buttonDisabled,
+            ]}
+            onPress={handleApprove}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <ActivityIndicator color="#4CAF50" />
+            ) : (
+              <Text style={styles.approveButtonText}>Approve</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View
           style={[
-            styles.button,
-            styles.approveButton,
-            isProcessing && styles.buttonDisabled,
+            styles.statusBanner,
+            approval.status.toLowerCase() === "approved"
+              ? styles.statusBannerApproved
+              : styles.statusBannerRejected,
           ]}
-          onPress={handleApprove}
-          disabled={isProcessing}
         >
-          <Text style={styles.approveButtonText}>
-            {isProcessing ? "Processing..." : "Approve"}
+          <Text
+            style={[
+              styles.statusBannerText,
+              approval.status.toLowerCase() === "approved"
+                ? styles.statusTextApproved
+                : styles.statusTextRejected,
+            ]}
+          >
+            This request has been {approval.status.toUpperCase()}
           </Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      )
+      }
 
       <RejectModal
         visible={rejectModalVisible}
@@ -244,7 +263,7 @@ export default function ApprovalDetailsScreen() {
         onSubmit={handleRejectSubmit}
         isLoading={isProcessing}
       />
-    </View>
+    </View >
   );
 }
 
@@ -361,5 +380,28 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     backgroundColor: "#ccc",
+  },
+  statusBanner: {
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+  },
+  statusBannerApproved: {
+    backgroundColor: "#E8F5E9", // Light Green
+  },
+  statusBannerRejected: {
+    backgroundColor: "#FFEBEE", // Light Red
+  },
+  statusBannerText: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  statusTextApproved: {
+    color: "#2E7D32", // Dark Green
+  },
+  statusTextRejected: {
+    color: "#C62828", // Dark Red
   },
 });

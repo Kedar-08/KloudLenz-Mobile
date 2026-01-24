@@ -9,6 +9,7 @@ export interface Approval {
   status: "pending" | "approved" | "rejected";
   timestamp: string;
   rejectionReason?: string;
+  subscriptionNumber?: string;
   // Additional, request-specific fields (temporary per request)
   extraFields?: Record<string, string>;
 }
