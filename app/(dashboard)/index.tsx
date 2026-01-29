@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -18,7 +19,17 @@ export default function DashboardScreen() {
   const router = useRouter();
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("ALL");
+
+  const filteredApprovals = React.useMemo(() => {
+    if (filterStatus === "ALL") return approvals;
+    return approvals.filter((a) => {
+      const status = a.status?.toLowerCase() || "";
+      return status === filterStatus.toLowerCase();
+    });
+  }, [approvals, filterStatus]);
 
   // Reload approvals whenever this screen gains focus (so list reflects approve/reject actions)
   useFocusEffect(
@@ -46,9 +57,16 @@ export default function DashboardScreen() {
     };
   }, []);
 
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await loadApprovals();
+    setRefreshing(false);
+  }, [loadApprovals]);
+
   const loadApprovals = React.useCallback(async () => {
     try {
-      setIsLoading(true);
+      // Don't show full page loader if refreshing
+      // setIsLoading(true); 
       setError(null);
       const data = await mockApi.getApprovals();
       setApprovals(data);
@@ -75,8 +93,37 @@ export default function DashboardScreen() {
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>No approvals to review</Text>
+      <Text style={styles.emptyText}>
+        {filterStatus === "ALL"
+          ? "No approvals to review"
+          : `No ${filterStatus.toLowerCase()} approvals`}
+      </Text>
     </View>
+  );
+
+  const FilterTab = ({
+    label,
+    value,
+  }: {
+    label: string;
+    value: typeof filterStatus;
+  }) => (
+    <Text
+      onPress={() => setFilterStatus(value)}
+      style={[
+        styles.filterTab,
+        filterStatus === value && styles.filterTabActive,
+      ]}
+    >
+      <Text
+        style={[
+          styles.filterText,
+          filterStatus === value && styles.filterTextActive,
+        ]}
+      >
+        {label}
+      </Text>
+    </Text>
   );
 
   if (isLoading) {
@@ -90,12 +137,33 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.filterContainer}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={[
+            { label: "All", value: "ALL" },
+            { label: "Pending", value: "PENDING" },
+            { label: "Approved", value: "APPROVED" },
+            { label: "Rejected", value: "REJECTED" },
+          ] as const}
+          keyExtractor={(item) => item.value}
+          renderItem={({ item }) => (
+            <FilterTab label={item.label} value={item.value} />
+          )}
+          contentContainerStyle={styles.filterContent}
+        />
+      </View>
+
       <FlatList
-        data={approvals}
+        data={filteredApprovals}
         renderItem={renderApprovalCard}
         keyExtractor={(item) => item.id}
         ListEmptyComponent={renderEmptyState}
         contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#C41230"]} />
+        }
       />
     </View>
   );
@@ -116,6 +184,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
   },
+  filterContainer: {
+    backgroundColor: "#fff",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  filterContent: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  filterTab: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#f0f0f0",
+    overflow: "hidden", // For borderRadius on Text component
+  },
+  filterTabActive: {
+    backgroundColor: "#C41230",
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+  },
+  filterTextActive: {
+    color: "#fff",
+  },
   listContent: {
     paddingVertical: 8,
   },
@@ -124,6 +220,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
+    marginTop: 100,
   },
   emptyText: {
     fontSize: 16,

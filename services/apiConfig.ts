@@ -3,7 +3,8 @@ import axios from "axios";
 // Configuration for API
 export const API_CONFIG = {
   // Backend URL
-  BASE_URL: "https://calculably-noncretaceous-georgene.ngrok-free.dev/api/v1", // ngrok backend
+  BASE_URL: "http://10.0.2.2:8080/api/v1",
+  // BASE_URL: "https://calculably-noncretaceous-georgene.ngrok-free.dev/api/v1", // ngrok backend
   TIMEOUT: 10000, // 10 seconds
   USE_MOCK: false, // Using real backend
 };

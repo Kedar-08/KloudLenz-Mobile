@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   StyleSheet,
@@ -74,9 +75,11 @@ export const RejectModal: React.FC<RejectModalProps> = ({
               onPress={handleSubmit}
               disabled={!reason.trim() || isLoading}
             >
-              <Text style={styles.submitButtonText}>
-                {isLoading ? "Submitting..." : "Submit"}
-              </Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#4CAF50" />
+              ) : (
+                <Text style={styles.submitButtonText}>Submit</Text>
+              )}
             </Pressable>
           </View>
         </View>
