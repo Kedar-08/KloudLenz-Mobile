@@ -94,8 +94,9 @@ export const backendApi = {
       timestamp: new Date().toISOString(),
       rejectionReason: item.reason || undefined,
       extraFields: {
-        subscriptionNumber: item.subscriptionNumber || "",
-        rawJson: item.rawJson || "",
+        subscriptionNumber:
+          item.subscriptionNumber || item.referenceNumber || "",
+        rawJson: item.rawJson || null,
       },
     }));
   },
@@ -120,11 +121,14 @@ export const backendApi = {
 
     const item = response.data.data || response.data.approval || response.data;
 
+    // Extract account number from rawJson
+    const accountNumber = item.rawJson?.existingAccountNumber || "";
+
     // Transform backend response to Approval type (same as getApprovals)
     const approval: Approval = {
       id: String(item.id),
       userId: String(item.id),
-      username: "System",
+      username: accountNumber,
       description: item.reason || "No description",
       category: item.type || "general",
       suspensionPolicy: item.type || "none",
@@ -140,8 +144,9 @@ export const backendApi = {
       timestamp: new Date().toISOString(),
       rejectionReason: item.reason || undefined,
       extraFields: {
-        subscriptionNumber: item.subscriptionNumber || "",
-        rawJson: item.rawJson || "",
+        subscriptionNumber:
+          item.subscriptionNumber || item.referenceNumber || "",
+        rawJson: item.rawJson || null,
       },
     };
 

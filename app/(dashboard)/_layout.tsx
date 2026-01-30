@@ -1,7 +1,16 @@
-import { Stack } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
+import { Stack, useRouter } from "expo-router";
 import React from "react";
+import { Pressable, StyleSheet } from "react-native";
 
 export default function DashboardLayout() {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    // Navigate to login screen and reset the navigation stack
+    router.replace("/(auth)/login");
+  };
+
   return (
     <Stack
       screenOptions={{
@@ -17,6 +26,12 @@ export default function DashboardLayout() {
         name="index"
         options={{
           title: "Approvals",
+          headerBackVisible: false,
+          headerRight: () => (
+            <Pressable onPress={handleLogout} style={styles.logoutButton}>
+              <MaterialIcons name="logout" size={24} color="#c41230" />
+            </Pressable>
+          ),
         }}
       />
       <Stack.Screen
@@ -28,3 +43,10 @@ export default function DashboardLayout() {
     </Stack>
   );
 }
+
+const styles = StyleSheet.create({
+  logoutButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+});

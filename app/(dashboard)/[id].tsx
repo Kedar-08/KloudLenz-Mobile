@@ -10,10 +10,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { RejectModal } from "../../components/RejectModal";
+import { JsonDisplay } from "../../components/JsonDisplay";
+import { ConfirmationModal, RejectReasonModal } from "../../modals";
 import { eventBus } from "../../services/eventBus";
 import { mockApi } from "../../services/mockApi";
 import { Approval } from "../../types/approval";
+import { formatCamelCase } from "../../utils/formatText";
 
 export default function ApprovalDetailsScreen() {
   const router = useRouter();
@@ -22,6 +24,9 @@ export default function ApprovalDetailsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [confirmationModalVisible, setConfirmationModalVisible] =
+    useState(false);
+  const [confirmationMessage, setConfirmationMessage] = useState("");
 
   useEffect(() => {
     loadApprovalDetails();
@@ -54,15 +59,12 @@ export default function ApprovalDetailsScreen() {
       setIsProcessing(true);
       await mockApi.approveRequest(approval.id);
 
-      // Wait a bit for backend to process before navigating back
+      // Wait a bit for backend to process
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      Alert.alert("Success", "Approval has been approved", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
+      // Show confirmation modal (auto-dismisses after timer)
+      setConfirmationMessage("This request has been approved.");
+      setConfirmationModalVisible(true);
     } catch (err) {
       // rollback optimistic update
       setApproval((p) => (p ? { ...p, status: prevStatus } : p));
@@ -93,15 +95,12 @@ export default function ApprovalDetailsScreen() {
       await mockApi.rejectRequest(approval.id, reason);
       setRejectModalVisible(false);
 
-      // Wait a bit for backend to process before navigating back
+      // Wait a bit for backend to process
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      Alert.alert("Success", "Approval has been rejected", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
+      // Show confirmation modal (auto-dismisses after timer)
+      setConfirmationMessage("This request has been rejected.");
+      setConfirmationModalVisible(true);
     } catch (err) {
       // rollback optimistic update
       setApproval((p) =>
@@ -117,6 +116,11 @@ export default function ApprovalDetailsScreen() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleConfirmationDismiss = () => {
+    setConfirmationModalVisible(false);
+    router.back();
   };
 
   if (isLoading) {
@@ -142,7 +146,7 @@ export default function ApprovalDetailsScreen() {
         <View style={{ marginBottom: 12 }}>
           <Text style={styles.mainTitle}>
             The user wants to make changes in{" "}
-            {approval.category ?? "Service suspension"}
+            {formatCamelCase(approval.category) || "Service suspension"}
           </Text>
         </View>
 
@@ -150,7 +154,7 @@ export default function ApprovalDetailsScreen() {
           <Text style={styles.sectionTitle}>User Information</Text>
           <View style={styles.infoContainer}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Username:</Text>
+              <Text style={styles.infoLabel}>Account No.:</Text>
               <Text style={styles.infoValue}>{approval.username}</Text>
             </View>
             <View style={styles.infoRow}>
@@ -166,7 +170,7 @@ export default function ApprovalDetailsScreen() {
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Category:</Text>
               <Text style={styles.infoValue}>
-                {approval.category ?? "Service suspension"}
+                {formatCamelCase(approval.category) || "Service suspension"}
               </Text>
             </View>
             <View style={styles.infoRow}>
@@ -185,76 +189,72 @@ export default function ApprovalDetailsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Fields</Text>
           <View style={styles.infoContainer}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Suspension policy:</Text>
-              <Text style={styles.infoValue}>{approval.suspensionPolicy}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Execution date:</Text>
-              <Text style={styles.infoValue}>
-                {new Date(approval.executionDate).toLocaleDateString()}
-              </Text>
-            </View>
-            {approval.extraFields &&
-              (() => {
-                const skipKeys = new Set([
-                  "suspension policy",
-                  "execution date",
-                  "executiondate",
-                  "suspensionpolicy",
-                ]);
-                return Object.entries(approval.extraFields)
-                  .filter(([key, value]) => {
-                    const k = key.trim().toLowerCase();
-                    if (skipKeys.has(k)) return false;
-                    // also avoid duplicates if value matches known fields
-                    if (value === approval.suspensionPolicy) return false;
-                    if (value === approval.executionDate) return false;
-                    return true;
-                  })
-                  .map(([key, value]) => (
-                    <View key={key} style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>{key}:</Text>
-                      <Text style={styles.infoValue}>
-                        {typeof value === "object" && value !== null
-                          ? JSON.stringify(value, null, 2)
-                          : String(value)}
-                      </Text>
-                    </View>
-                  ));
-              })()}
+            {approval.extraFields && (
+              <JsonDisplay data={approval.extraFields} />
+            )}
           </View>
         </View>
       </ScrollView>
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-          style={[styles.button, styles.rejectButton]}
+          style={[
+            styles.button,
+            styles.rejectButton,
+            (isProcessing || approval.status === "rejected") &&
+              styles.rejectButtonDisabled,
+          ]}
           onPress={() => setRejectModalVisible(true)}
-          disabled={isProcessing}
+          disabled={isProcessing || approval.status === "rejected"}
         >
-          <Text style={styles.rejectButtonText}>Reject</Text>
+          <Text
+            style={[
+              styles.rejectButtonText,
+              (isProcessing || approval.status === "rejected") &&
+                styles.buttonTextDisabled,
+            ]}
+          >
+            {approval.status === "rejected" ? "Rejected" : "Reject"}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.button,
             styles.approveButton,
-            isProcessing && styles.buttonDisabled,
+            (isProcessing || approval.status === "approved") &&
+              styles.approveButtonDisabled,
           ]}
           onPress={handleApprove}
-          disabled={isProcessing}
+          disabled={isProcessing || approval.status === "approved"}
         >
-          <Text style={styles.approveButtonText}>
-            {isProcessing ? "Processing..." : "Approve"}
+          <Text
+            style={[
+              styles.approveButtonText,
+              (isProcessing || approval.status === "approved") &&
+                styles.buttonTextDisabled,
+            ]}
+          >
+            {isProcessing
+              ? "Processing..."
+              : approval.status === "approved"
+                ? "Approved"
+                : "Approve"}
           </Text>
         </TouchableOpacity>
       </View>
 
-      <RejectModal
+      <RejectReasonModal
         visible={rejectModalVisible}
         onCancel={() => setRejectModalVisible(false)}
         onSubmit={handleRejectSubmit}
         isLoading={isProcessing}
+      />
+
+      <ConfirmationModal
+        visible={confirmationModalVisible}
+        message={confirmationMessage}
+        duration={2000}
+        onDismiss={handleConfirmationDismiss}
       />
     </View>
   );
@@ -356,6 +356,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#4CAF50",
   },
+  approveButtonDisabled: {
+    backgroundColor: "#E8F5E9",
+    borderColor: "#A5D6A7",
+  },
   approveButtonText: {
     color: "#4CAF50",
     fontSize: 16,
@@ -366,10 +370,17 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#F44336",
   },
+  rejectButtonDisabled: {
+    backgroundColor: "#FFEBEE",
+    borderColor: "#EF9A9A",
+  },
   rejectButtonText: {
     color: "#F44336",
     fontSize: 16,
     fontWeight: "600",
+  },
+  buttonTextDisabled: {
+    color: "#999",
   },
   buttonDisabled: {
     backgroundColor: "#ccc",

@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Approval } from "../types/approval";
+import { formatCamelCase } from "../utils/formatText";
 
 interface ApprovalCardProps {
   approval: Approval;
@@ -36,7 +37,9 @@ export const ApprovalCard: React.FC<ApprovalCardProps> = ({
             { backgroundColor: getStatusColor(approval.status) },
           ]}
         >
-          <Text style={styles.statusText}>{approval.status}</Text>
+          <Text style={styles.statusText}>
+            {formatCamelCase(approval.status)}
+          </Text>
         </View>
       </View>
 
@@ -45,7 +48,7 @@ export const ApprovalCard: React.FC<ApprovalCardProps> = ({
       <View style={styles.fieldRow}>
         <Text style={styles.fieldLabel}>Category:</Text>
         <Text style={styles.fieldValue}>
-          {approval.category ?? "Service suspension"}
+          {formatCamelCase(approval.category) || "Service suspension"}
         </Text>
       </View>
 

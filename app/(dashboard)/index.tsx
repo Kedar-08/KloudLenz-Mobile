@@ -1,10 +1,11 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -14,11 +15,31 @@ import { eventBus } from "../../services/eventBus";
 import { mockApi } from "../../services/mockApi";
 import { Approval } from "../../types/approval";
 
+type TabType = "all" | "approved" | "rejected" | "pending";
+
+const TABS: { key: TabType; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "approved", label: "Approved" },
+  { key: "rejected", label: "Rejected" },
+  { key: "pending", label: "Pending" },
+];
+
+const TAB_ACTIVE_COLOR = "#c41230";
+
 export default function DashboardScreen() {
   const router = useRouter();
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>("all");
+
+  // Filter approvals based on active tab
+  const filteredApprovals = useMemo(() => {
+    if (activeTab === "all") {
+      return approvals;
+    }
+    return approvals.filter((approval) => approval.status === activeTab);
+  }, [approvals, activeTab]);
 
   // Reload approvals whenever this screen gains focus (so list reflects approve/reject actions)
   useFocusEffect(
@@ -75,7 +96,11 @@ export default function DashboardScreen() {
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>No approvals to review</Text>
+      <Text style={styles.emptyText}>
+        {activeTab === "all"
+          ? "No approvals to review"
+          : `No ${activeTab} requests`}
+      </Text>
     </View>
   );
 
@@ -90,8 +115,28 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Tab Bar */}
+      <View style={styles.tabContainer}>
+        {TABS.map((tab) => (
+          <Pressable
+            key={tab.key}
+            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+            onPress={() => setActiveTab(tab.key)}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === tab.key && styles.tabTextActive,
+              ]}
+            >
+              {tab.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       <FlatList
-        data={approvals}
+        data={filteredApprovals}
         renderItem={renderApprovalCard}
         keyExtractor={(item) => item.id}
         ListEmptyComponent={renderEmptyState}
@@ -116,6 +161,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
   },
+  tabContainer: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+    marginHorizontal: 4,
+    backgroundColor: "#f0f0f0",
+  },
+  tabActive: {
+    backgroundColor: "#c41230",
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+  },
+  tabTextActive: {
+    color: "#fff",
+  },
   listContent: {
     paddingVertical: 8,
   },
@@ -124,6 +198,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
+    paddingTop: 50,
   },
   emptyText: {
     fontSize: 16,

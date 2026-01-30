@@ -10,5 +10,5 @@ export interface Approval {
   timestamp: string;
   rejectionReason?: string;
   // Additional, request-specific fields (temporary per request)
-  extraFields?: Record<string, string>;
+  extraFields?: Record<string, unknown>;
 }
