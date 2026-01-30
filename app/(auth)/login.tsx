@@ -86,8 +86,8 @@ export default function LoginScreen() {
                   }
                 }
 
-                // Navigate to dashboard
-                router.push("/(dashboard)");
+                // Navigate to welcome screen
+                router.push("/(auth)/welcome");
               } catch (err) {
                 Alert.alert("Login Failed", "Invalid credentials");
                 console.error("Login error:", err);

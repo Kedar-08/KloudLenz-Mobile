@@ -96,6 +96,7 @@ export const backendApi = {
       extraFields: {
         subscriptionNumber:
           item.subscriptionNumber || item.referenceNumber || "",
+        referenceNumber: item.referenceNumber || "",
         rawJson: item.rawJson || null,
       },
     }));
@@ -146,6 +147,7 @@ export const backendApi = {
       extraFields: {
         subscriptionNumber:
           item.subscriptionNumber || item.referenceNumber || "",
+        referenceNumber: item.referenceNumber || "",
         rawJson: item.rawJson || null,
       },
     };

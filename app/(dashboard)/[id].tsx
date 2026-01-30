@@ -190,7 +190,10 @@ export default function ApprovalDetailsScreen() {
           <Text style={styles.sectionTitle}>Fields</Text>
           <View style={styles.infoContainer}>
             {approval.extraFields && (
-              <JsonDisplay data={approval.extraFields} />
+              <JsonDisplay
+                data={approval.extraFields}
+                category={approval.category}
+              />
             )}
           </View>
         </View>
