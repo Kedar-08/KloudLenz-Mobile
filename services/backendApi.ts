@@ -84,11 +84,11 @@ export const backendApi = {
       suspensionPolicy: item.type || "none",
       executionDate: new Date().toISOString(),
       status:
-        item.status === "Success"
+        item.status === "APPROVED" || item.status === "Success"
           ? ("approved" as const)
-          : item.status === "Pending"
+          : item.status === "PENDING" || item.status === "Pending"
             ? ("pending" as const)
-            : item.status === "Rejected"
+            : item.status === "REJECTED" || item.status === "Rejected"
               ? ("rejected" as const)
               : ("pending" as const),
       timestamp: new Date().toISOString(),
@@ -105,12 +105,48 @@ export const backendApi = {
    * @param id - Approval ID
    * @returns Single approval object
    *
-   * API: GET /approvals/:id
+   * API: GET /approval/getDetails/:id
    * Response: { approval: Approval }
    */
   getApprovalById: async (id: string): Promise<Approval> => {
-    const response = await apiClient.get(`/approvals/${id}`);
-    return response.data.approval || response.data;
+    console.log("📤 Fetching approval by ID:", id);
+    console.log("   URL:", `${API_CONFIG.BASE_URL}/approval/getDetails/${id}`);
+
+    const response = await apiClient.get(`/approval/getDetails/${id}`);
+
+    console.log("📥 getApprovalById response:");
+    console.log("   Status:", response.status);
+    console.log("   Data:", JSON.stringify(response.data, null, 2));
+
+    const item = response.data.data || response.data.approval || response.data;
+
+    // Transform backend response to Approval type (same as getApprovals)
+    const approval: Approval = {
+      id: String(item.id),
+      userId: String(item.id),
+      username: "System",
+      description: item.reason || "No description",
+      category: item.type || "general",
+      suspensionPolicy: item.type || "none",
+      executionDate: new Date().toISOString(),
+      status:
+        item.status === "APPROVED" || item.status === "Success"
+          ? ("approved" as const)
+          : item.status === "PENDING" || item.status === "Pending"
+            ? ("pending" as const)
+            : item.status === "REJECTED" || item.status === "Rejected"
+              ? ("rejected" as const)
+              : ("pending" as const),
+      timestamp: new Date().toISOString(),
+      rejectionReason: item.reason || undefined,
+      extraFields: {
+        subscriptionNumber: item.subscriptionNumber || "",
+        rawJson: item.rawJson || "",
+      },
+    };
+
+    console.log("📥 Transformed approval:", JSON.stringify(approval, null, 2));
+    return approval;
   },
 
   /**
@@ -118,12 +154,24 @@ export const backendApi = {
    * @param id - Approval ID
    * @returns Updated approval object
    *
-   * API: POST /approvals/:id/approve
-   * Request: {} (empty body or { comment: string } optional)
+   * API: POST /approval/modifyStatus
+   * Request: { id: number, reason: null, status: "APPROVED" }
    * Response: { approval: Approval, message: string }
    */
   approveRequest: async (id: string): Promise<Approval> => {
-    const response = await apiClient.post(`/approvals/${id}/approve`);
+    console.log("📤 Approving request:", id);
+    console.log("   URL:", `${API_CONFIG.BASE_URL}/approval/modifyStatus`);
+
+    const response = await apiClient.post("/approval/modifyStatus", {
+      id: parseInt(id),
+      reason: null,
+      status: "APPROVED",
+    });
+
+    console.log("📥 Approve response:");
+    console.log("   Status:", response.status);
+    console.log("   Data:", JSON.stringify(response.data, null, 2));
+
     return response.data.approval || response.data;
   },
 
@@ -133,14 +181,25 @@ export const backendApi = {
    * @param reason - Rejection reason
    * @returns Updated approval object
    *
-   * API: POST /approvals/:id/reject
-   * Request: { reason: string }
+   * API: POST /approval/modifyStatus
+   * Request: { id: number, reason: string, status: "REJECTED" }
    * Response: { approval: Approval, message: string }
    */
   rejectRequest: async (id: string, reason: string): Promise<Approval> => {
-    const response = await apiClient.post(`/approvals/${id}/reject`, {
-      reason,
+    console.log("📤 Rejecting request:", id);
+    console.log("   URL:", `${API_CONFIG.BASE_URL}/approval/modifyStatus`);
+    console.log("   Reason:", reason);
+
+    const response = await apiClient.post("/approval/modifyStatus", {
+      id: parseInt(id),
+      reason: reason,
+      status: "REJECTED",
     });
+
+    console.log("📥 Reject response:");
+    console.log("   Status:", response.status);
+    console.log("   Data:", JSON.stringify(response.data, null, 2));
+
     return response.data.approval || response.data;
   },
 

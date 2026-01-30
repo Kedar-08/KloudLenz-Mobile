@@ -53,6 +53,10 @@ export default function ApprovalDetailsScreen() {
 
       setIsProcessing(true);
       await mockApi.approveRequest(approval.id);
+
+      // Wait a bit for backend to process before navigating back
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       Alert.alert("Success", "Approval has been approved", [
         {
           text: "OK",
@@ -88,6 +92,10 @@ export default function ApprovalDetailsScreen() {
       setIsProcessing(true);
       await mockApi.rejectRequest(approval.id, reason);
       setRejectModalVisible(false);
+
+      // Wait a bit for backend to process before navigating back
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       Alert.alert("Success", "Approval has been rejected", [
         {
           text: "OK",
@@ -207,7 +215,11 @@ export default function ApprovalDetailsScreen() {
                   .map(([key, value]) => (
                     <View key={key} style={styles.infoRow}>
                       <Text style={styles.infoLabel}>{key}:</Text>
-                      <Text style={styles.infoValue}>{value}</Text>
+                      <Text style={styles.infoValue}>
+                        {typeof value === "object" && value !== null
+                          ? JSON.stringify(value, null, 2)
+                          : String(value)}
+                      </Text>
                     </View>
                   ));
               })()}
